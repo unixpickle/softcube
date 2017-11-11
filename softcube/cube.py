@@ -15,48 +15,47 @@ RAW_PERMUTATIONS = {
     'L': [35, 1, 2, 32, 4, 5, 29, 7, 8, 18, 10, 11, 21, 13, 14, 24, 16, 17, 0, 19, 20, 3, 22, 23, 6, 25, 26, 27, 28, 15, 30, 31, 12, 33, 34, 9, 36, 37, 38, 39, 40, 41, 42, 43, 44, 51, 48, 45, 52, 49, 46, 53, 50, 47]
 }
 
-def identity_cube(dtype=tf.float64):
+ALL_MOVES = [move+suffix for move in ['U', 'D', 'F', 'B', 'R', 'L'] for suffix in ["'", '2', '']]
+
+def identity_cubes(count, dtype=tf.float64):
     """
-    Create a cube Tensor representing the solved state.
+    Create a batch of solved cube Tensors.
     """
     res = []
     for i in range(6 * 9):
         one_hot = [0] * 6
         one_hot[i // 9] = 1
         res.extend(one_hot)
-    return tf.constant(res, dtype=dtype)
+    return tf.tile(tf.expand_dims(tf.constant(res, dtype=dtype), axis=0), (count, 1))
 
-def apply_move(move, cube):
+def apply_move(move, cubes):
     """
     Apply a move to the cube Tensor.
 
     Args:
       move: a string representing the move in WCA
         notation. Only face turns are supported.
-      cube: a 324-component 1-D Tensor representing a cube
-        state or a distribution of cube states.
+      cubes: a batch of cubes, represented as a 2-D Tensor.
 
     Returns:
       A new cube Tensor.
     """
-    if len(move) not in [1, 2] or move[0] not in RAW_PERMUTATIONS:
+    if move not in ALL_MOVES:
         raise ValueError('invalid move: ' + move)
     move_count = 1
     if len(move) == 2:
-        if move[1] == "'":
-            move_count = 3
-        elif move[1] == '2':
+        if move[1] == '2':
             move_count = 2
         else:
-            raise ValueError('invalid move: ' + move)
+            move_count = 3
     raw_perm = RAW_PERMUTATIONS[move[0]]
     one_hot_perm = []
     for src_idx in raw_perm:
         for i in range(6):
-            one_hot_perm.append(raw_perm[6*src_idx + i])
+            one_hot_perm.append(src_idx*6 + i)
 
     perm = tf.constant(one_hot_perm)
-    res = cube
+    res = cubes
     for i in range(move_count):
-        res = tf.gather(res, perm)
+        res = tf.gather(res, perm, axis=1)
     return res
