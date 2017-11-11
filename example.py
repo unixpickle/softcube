@@ -19,7 +19,7 @@ def main():
             if i % 10 == 0:
                 print('step %d: loss=%f' % (i, obj))
         solutions = zip(*sess.run((solutions, objective)))
-        print('\n'.join([str(x) for x in sorted(solutions, key=lambda x: x[0])]))
+        print('\n'.join([str(x) for x in sorted(solutions, key=lambda x: x[1])]))
 
 if __name__ == '__main__':
     main()
