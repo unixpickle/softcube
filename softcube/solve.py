@@ -6,6 +6,8 @@ import tensorflow as tf
 
 from .cube import ALL_MOVES, identity_cubes, apply_move
 
+EPSILON = 1e-4
+
 def solve(scramble, batch_size, solution_moves=20):
     """
     Setup an objective that can be optimized to find a
@@ -31,7 +33,8 @@ def solve(scramble, batch_size, solution_moves=20):
         cube, move_str = apply_distribution(cube)
         result_moves.append(move_str)
     move_strs = tf.string_join(result_moves, separator=' ')
-    return tf.reduce_sum(tf.square(cube - identities), axis=-1), move_strs
+    log_probs = tf.log((cube + EPSILON) / (1 + EPSILON))
+    return -tf.reduce_sum(log_probs * identities, axis=-1), move_strs
 
 def apply_distribution(cubes, initializer=tf.truncated_normal_initializer()):
     """
