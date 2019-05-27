@@ -6,17 +6,17 @@ import torch
 import torch.optim as optim
 
 from softcube.cube import algorithm_cubes
-from softcube.solve import SoftmaxSolver
+from softcube.solve import NNSolver
 
 
 def main():
     """
     Compute a solution to a simple scramble.
     """
-    solver = SoftmaxSolver(num_moves=3, batch_size=10)
-    opt = optim.Adam(solver.parameters(), lr=1e-2)
+    solver = NNSolver(num_moves=3, batch_size=10)
+    opt = optim.Adam(solver.parameters(), lr=1e-3)
     start = algorithm_cubes('R U R\'', solver.batch_size)
-    for i in range(1000):
+    for i in range(100):
         obj = torch.mean(solver.losses(start))
         opt.zero_grad()
         obj.backward()

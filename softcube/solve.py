@@ -2,6 +2,8 @@
 SGD-based cube solving.
 """
 
+from abc import ABC, abstractmethod
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -38,26 +40,26 @@ class MoveCombiner:
         return combined.view(-1, self.matrix_size, self.matrix_size)
 
 
-class SoftmaxSolver:
-    """
-    A solver that finds solutions by learning logits.
-    """
-
+class Solver(ABC):
     def __init__(self, num_moves, batch_size):
         self.num_moves = num_moves
         self.batch_size = batch_size
         self.combiner = MoveCombiner()
-        self.move_logits = []
-        for _ in range(num_moves):
-            logits = nn.Parameter(torch.randn([batch_size, len(ALL_MOVES)]))
-            self.move_logits.append(logits)
 
+    @abstractmethod
     def parameters(self):
-        return self.move_logits
+        pass
+
+    @abstractmethod
+    def probabilities(self):
+        """
+        Get a batch of move probability batches, one per
+        move.
+        """
+        pass
 
     def apply_solutions(self, cubes):
-        for logits in self.move_logits:
-            probs = F.softmax(logits, dim=-1)
+        for probs in self.probabilities():
             matrices = self.combiner(probs)
             cubes = torch.matmul(cubes[:, None, :], matrices)[:, 0]
         return cubes
@@ -67,10 +69,60 @@ class SoftmaxSolver:
 
     def strings(self):
         res = []
+        probs = [x.detach().cpu().numpy() for x in self.probabilities()]
         for i in range(self.batch_size):
             moves = []
-            for tensor in self.move_logits:
-                idx = np.argmax(tensor[i].detach().cpu().numpy())
+            for arr in probs:
+                idx = np.argmax(arr[i])
                 moves.append(ALL_MOVES[idx])
             res.append(' '.join(moves))
         return res
+
+
+class SoftmaxSolver(Solver):
+    """
+    A solver that finds solutions by learning logits.
+    """
+
+    def __init__(self, num_moves, batch_size):
+        super().__init__(num_moves, batch_size)
+        self.move_logits = []
+        for _ in range(num_moves):
+            logits = nn.Parameter(torch.randn([batch_size, len(ALL_MOVES)]))
+            self.move_logits.append(logits)
+
+    def parameters(self):
+        return self.move_logits
+
+    def probabilities(self):
+        return [F.softmax(logits, dim=-1) for logits in self.move_logits]
+
+
+class NNSolver(Solver):
+    """
+    A solver that finds solutions by learning neural
+    network parameters.
+    """
+
+    def __init__(self, num_moves, batch_size):
+        super().__init__(num_moves, batch_size)
+        self.base = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+        )
+        self.inputs = nn.Parameter(torch.randn([batch_size, 256]))
+        self.output_layers = []
+        for _ in range(num_moves):
+            self.output_layers.append(nn.Linear(256, len(ALL_MOVES)))
+
+    def parameters(self):
+        return list(self.base.parameters()) + [self.inputs] + [x for l in self.output_layers
+                                                               for x in l.parameters()]
+
+    def probabilities(self):
+        features = self.base(self.inputs)
+        return [F.softmax(layer(features), dim=-1) for layer in self.output_layers]
