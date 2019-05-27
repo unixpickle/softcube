@@ -35,6 +35,9 @@ class MoveCombiner:
         self.matrix_size = move_matrix(ALL_MOVES[0]).shape[0]
         self.matrices = torch.stack([move_matrix(m).view(-1) for m in ALL_MOVES])
 
+    def to(self, target):
+        self.matrices = self.matrices.to(target)
+
     def __call__(self, probs):
         combined = torch.matmul(probs, self.matrices)
         return combined.view(-1, self.matrix_size, self.matrix_size)
@@ -57,6 +60,11 @@ class Solver(ABC):
         move.
         """
         pass
+
+    def to(self, target):
+        for p in self.parameters:
+            p.to(target)
+        self.combiner.to(target)
 
     def apply_solutions(self, cubes):
         for probs in self.probabilities():
