@@ -108,16 +108,23 @@ class NNSolver(Solver):
         super().__init__(num_moves, batch_size)
         self.base = nn.Sequential(
             nn.Linear(256, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Linear(256, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Linear(256, 256),
-            nn.ReLU(),
+            nn.BatchNorm1d(256),
         )
         self.inputs = nn.Parameter(torch.randn([batch_size, 256]))
         self.output_layers = []
         for _ in range(num_moves):
-            self.output_layers.append(nn.Linear(256, len(ALL_MOVES)))
+            self.output_layers.append(nn.Sequential(
+                nn.Linear(256, 256),
+                nn.BatchNorm1d(256),
+                nn.ReLU(),
+                nn.Linear(256, len(ALL_MOVES)),
+            ))
 
     def parameters(self):
         return list(self.base.parameters()) + [self.inputs] + [x for l in self.output_layers
