@@ -49,7 +49,7 @@ class SoftmaxSolver:
         self.combiner = MoveCombiner()
         self.move_logits = []
         for _ in range(num_moves):
-            logits = nn.Parameter(torch.zeros([batch_size, len(ALL_MOVES)]))
+            logits = nn.Parameter(torch.randn([batch_size, len(ALL_MOVES)]))
             self.move_logits.append(logits)
 
     def parameters(self):
