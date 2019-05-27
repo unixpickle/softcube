@@ -20,7 +20,7 @@ def solution_loss(cubes, epsilon=EPSILON):
     unsolved cubes.
     """
     log_probs = torch.log((cubes + epsilon) / (1 + epsilon))
-    return -torch.sum(log_probs * identity_cubes(cubes.shape[0]), dim=-1)
+    return -torch.sum(log_probs * identity_cubes(cubes.shape[0]).to(cubes.device), dim=-1)
 
 
 class MoveCombiner(nn.Module):
