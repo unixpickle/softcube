@@ -2,4 +2,4 @@
 Differentiable Rubik's cube probability distributions.
 """
 
-from .solve import solve
+__all__ = ['solve', 'cube']

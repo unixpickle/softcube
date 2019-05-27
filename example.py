@@ -2,24 +2,30 @@
 Example of solving a simple cube.
 """
 
-from softcube import solve
-import tensorflow as tf
+import torch
+import torch.optim as optim
+
+from softcube.cube import algorithm_cubes
+from softcube.solve import SoftmaxSolver
+
 
 def main():
     """
     Compute a solution to a two-move scramble.
     """
-    objective, solutions = solve(['R', 'U'], 10, solution_moves=2)
-    mean_obj = tf.reduce_mean(objective)
-    minimize = tf.train.AdamOptimizer(learning_rate=1e-2).minimize(mean_obj)
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        for i in range(1000):
-            _, obj = sess.run((minimize, mean_obj))
-            if i % 10 == 0:
-                print('step %d: loss=%f' % (i, obj))
-        solutions = zip(*sess.run((solutions, objective)))
-        print('\n'.join([str(x) for x in sorted(solutions, key=lambda x: x[1])]))
+    solver = SoftmaxSolver(num_moves=2, batch_size=10)
+    opt = optim.Adam(solver.parameters(), lr=1e-2)
+    start = algorithm_cubes('R U', solver.batch_size)
+    for i in range(1000):
+        obj = torch.mean(solver.losses(start))
+        opt.zero_grad()
+        obj.backward()
+        opt.step()
+        if i % 10 == 0:
+            print('step %d: loss=%f' % (i, obj.item()))
+    solutions = zip(solver.strings(), solver.losses(start).detach().cpu().numpy())
+    print('\n'.join([str(x) for x in sorted(solutions, key=lambda x: x[1])]))
+
 
 if __name__ == '__main__':
     main()
